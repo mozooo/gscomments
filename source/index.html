@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Comment</title>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+  <script>
+    //------------------------------
+    // Event Handler
+    //------------------------------
+    
+    // Page Load
+    $(function() {
+      formatCommentList();
+    });
+
+    function onClick_CreateComment(e) {
+      e.preventDefault();
+      createEditdialog();
+    }
+
+    function onClick_Submit(e) {
+      e.preventDefault();
+      var runner = google.script.run.withFailureHandler(onGSRunFailure);
+      runner.withSuccessHandler(function(comment) {        
+        var row = $('<tr>')
+        row.attr('data-id', comment.id);
+        row.append($('<td class="col1">').html(comment.contents.replace(/(\r\n|\n|\r)/g, '<br />')));
+        row.append($('<td class="col2">').html(comment.createdBy+'<br />'+comment.createdAt));
+        $('#commentlist tbody').prepend(row);
+        formatCommentList();
+        $('#editdialog').find("textarea, :text, select, :hidden").val("").end().find(":checked").prop("checked", false);
+        $('#editdialog input[name="articlePath"]').val(comment.articlePath);
+        $('#editdialog').css('display', 'none');
+        $('#overlay').css('display', 'none');
+      }).postComment(this.parentNode);
+    }
+
+    function onClick_Cancel(e) {
+      e.preventDefault();
+      $('#editdialog').find("textarea, text, select").val("").end().find(":checked").prop("checked", false);
+      $('#editdialog').css('display', 'none');
+      $('#overlay').css('display', 'none');
+    }
+
+
+    //------------------------------
+    // Functions
+    //------------------------------
+    function formatCommentList() {
+      $('#commentlist tr:even').removeClass('even');
+      $('#commentlist tr:odd').removeClass('even');
+      $('#commentlist tr:even').addClass('even');
+    }
+
+    function onGSRunFailure(ret) {
+      alert("通信エラーが発生しました。申し訳ありませんが、しばらく経ってから投稿をお願いします。")
+      console.log("called onGSRunFailure: " + ret);
+    }
+    
+    function createEditdialog(id) {
+      console.log("create editdialog.:"+id);
+      
+      $('#editdialog input[name="id"]').val("");
+      $('#editdialog input[name="createdBy"]').val("");
+      $('#editdialog textarea').val("");
+        
+      $('#editdialog-title').text("コメントの投稿");
+      $('#editdialog input[type="submit"]').val("投稿");
+
+      $('#editdialog').css('display', 'block');
+      $('#overlay').css('display', 'block');
+    }
+    
+  </script>
+
+  <style>
+    #main { font-size:12px; margin: 5px; }
+    #overlay {
+      display: none;
+      top: 0; left: 0;
+      height: 100%; width: 100%;
+      position: absolute;
+      z-index: 1000;
+      background-color: #ccc;
+      opacity: 0.6;	/* Chrome Opera, Safari 用 */
+      filter: alpha(opacity=60); /* IE 用 */
+      -moz-opacity: 0.6; /* Firefox, Netscape 用 */
+    }
+    #commentlist { overflow: auto; }
+    #commentlist table { table-layout:fixed; border-collapse:sepalate; border-spacing: 1px; width:100%; }
+    #commentlist tr { background-color: #efefef; }
+    #commentlist tr.even { background-color: #d6f2f2; }
+    #commentlist tr:hover td { background-color: #330099; color: #fff; }
+    #commentlist td { padding:5px; }
+    #commentlist td.col1 { width:350px; }
+    #commentlist td.col2 { width:150px; }
+    #commentlist td.col3 { width:20px; text-align:center; font-size:14px; }
+    #editdialog {
+      display: none;
+      margin: 0px;
+      border: 1px solid #808099;
+      position: absolute;
+      top: 0%;
+      left: 10%;
+      z-index: 9999;
+      width: 380px;
+      height: 130px;
+      background-color: #ddd;
+    }
+    #editdialog input[type="text"] {
+      position:relative; border:solid 1px #ccc; width: 350px;
+      left: 10px; font-size:12px;
+    }
+    #editdialog textarea {
+      position:relative; border:solid 1px #ccc; width: 350px; height: 50px; 
+      left: 10px; font-size:12px;
+    }
+    #editdialog input[type="reset"]  { position:absolute; right: 50px; top:5px }
+    #editdialog input[type="submit"] { position:absolute; right: 10px; top:5px }
+    #editdialog { background-color: #fcf; }
+  </style>
+</head>
+
+<body>
+  <div id="main">
+    <div id="commentlist">
+      <button id="create" onClick="onClick_CreateComment.call(this, event)">新規投稿</button>
+      <table>
+        <tbody>
+          <? while (comments.hasNext()) {
+            var comment = comments.next(); ?>
+          <tr data-id="<?= comment.getId() ?>" >
+            <td class="col1">
+              <? output.append(comment.contents.replace(/(\r\n|\n|\r)/g, '<br />')); ?>
+            </td>
+            <td class="col2">
+              <?= comment.createdBy ?><br />
+              <?= dateToStr(new Date(comment.createdAt)) ?>
+            </td>
+          </tr>
+          <? } ?>
+        </tbody>
+      </table>
+    </div>
+    <div id="editdialog">
+      <form>
+        <input type="hidden" name="articlePath" value="<?= articlePath ?>" />
+        <input type="hidden" name="id" />
+        <table>
+          <tr><td>投稿者</td></tr>
+          <tr><td>
+            <input type="text" name="createdBy" tabindex="1" />
+          </td></tr>
+          <tr><td>コメント</td></tr>
+          <tr><td>
+            <textarea name="contents" tabindex="2"></textarea>
+          </td></tr>
+        </table>
+        <input type="reset" value="キャンセル" tabindex="4" onClick="onClick_Cancel.call(this, event);" />
+        <input type="submit" value="登録" tabindex="3" onClick="onClick_Submit.call(this, event);" />
+      </form>
+    </div>
+  </div>
+  <div id="overlay"></div>
+</body>
+</html>
